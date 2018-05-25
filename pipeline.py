@@ -58,7 +58,7 @@ if not WGET_LUA:
 #
 # Update this each time you make a non-cosmetic change.
 # It will be added to the WARC files and reported to the tracker.
-VERSION = '20180525.02'
+VERSION = '20180525.03'
 USER_AGENT = 'ArchiveTeam'
 TRACKER_ID = 'zetaboardsdisco'
 TRACKER_HOST = 'tracker.archiveteam.org'
@@ -202,7 +202,9 @@ class WgetArgs(object):
         if item_type == 'forumids':
             start, end = item_value.split('-')
             for board in range(int(start), int(end)+1):
-                for server in range(1, 5) + range(6, 16):
+                for server in range(1, 16):
+                    if server == 5:
+                        continue
                     wget_args.extend(['--warc-header',
                                       'zetaboards-server-board: {}-{}'
                                       .format(server, board)])
