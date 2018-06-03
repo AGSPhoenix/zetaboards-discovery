@@ -51,7 +51,7 @@ wget.callbacks.httploop_result = function(url, err, http_stat)
       io.stdout:write("\nI give up...\n")
       io.stdout:flush()
       tries = 0
-      return wget.actions.ABORT
+      return wget.actions.EXIT
     else
       return wget.actions.CONTINUE
     end
