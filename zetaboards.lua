@@ -2,7 +2,7 @@ dofile("urlcode.lua")
 dofile("table_show.lua")
 
 local item_type = os.getenv('item_type')
-local item_value = string.lower(os.getenv('item_value'))
+local item_value_original = string.lower(os.getenv('item_value'))
 local item_dir = os.getenv('item_dir')
 local warc_file_base = os.getenv('warc_file_base')
 
@@ -15,6 +15,17 @@ local abortgrab = false
 local discovered_forums = {}
 local discovered_forumpages = {}
 local discovered_memberpages = {}
+
+local item_value = item_value_original
+while string.match(item_value, "/$") do
+  item_value = string.match(item_value, "^(.+)/$")
+end
+
+local urlmatchinner = "[^/]+"
+for _ in string.gmatch(item_value, "(/).") do
+  urlmatchinner = urlmatchinner .. "/[^/]+"
+end
+local urlmatch = "^https?://(" .. urlmatchinner .. ")"
 
 for ignore in io.open("ignore-list", "r"):lines() do
   downloaded[ignore] = true
@@ -32,27 +43,29 @@ read_file = function(file)
 end
 
 allowed = function(url, parenturl)
-  if string.match(url, "'+")
-     or string.match(url, "[<>\\{}]")
-     or string.match(url, "//$")
-     or string.match(url, "locale%.lang")
-     or string.match(url, "subscribe$")
-     or string.match(url, "/topic/[0-9]+")
-     or string.match(url, "/profile/[0-9]+")
-     or string.match(url, "/stats/list/%?tid=[0-9]+")
-     or string.match(url, "/forum/[0-9]+/[0-9]+/$")
-     or string.match(url, "/blog/main/[0-9]+/$")
-     or string.match(url, "/blog/entry/[0-9]+/[0-9]+/$")
-     or string.match(url, "/members/[0-9]+/") then
+  local testurl = string.lower(url)
+
+  if string.match(testurl, "'+")
+     or string.match(testurl, "[<>\\{}]")
+     or string.match(testurl, "//$")
+     or string.match(testurl, "locale%.lang")
+     or string.match(testurl, "subscribe$")
+     or string.match(testurl, "/topic/[0-9]+")
+     or string.match(testurl, "/profile/[0-9]+")
+     or string.match(testurl, "/stats/list/%?tid=[0-9]+")
+     or string.match(testurl, "/forum/[0-9]+/[0-9]+/$")
+     or string.match(testurl, "/blog/main/[0-9]+/$")
+     or string.match(testurl, "/blog/entry/[0-9]+/[0-9]+/$")
+     or string.match(testurl, "/members/[0-9]+/") then
     return false
   end
 
-  if string.match(url, "/calendar/bday/.+[^a-zA-Z]y=[0-9]+")
-     and string.match(url, "[^a-zA-Z]y=([0-9]+)") ~= "2018" then
+  if string.match(testurl, "/calendar/bday/.+[^a-zA-Z]y=[0-9]+")
+     and string.match(testurl, "[^a-zA-Z]y=([0-9]+)") ~= "2018" then
     return false
   end
 
-  if string.match(url, "^https?://([^/]+)") == item_value then
+  if string.match(testurl, urlmatch) == item_value then
     return true
   end
 
@@ -63,7 +76,7 @@ wget.callbacks.download_child_p = function(urlpos, parent, depth, start_url_pars
   local url = urlpos["url"]["url"]
   local html = urlpos["link_expect_html"]
 
-  if item_type == "forumbase"
+  if item_type == "baseforum"
      and downloaded[url] ~= true and addedtolist[url] ~= true
      and (allowed(url, parent["url"]) or html == 0) then
     addedtolist[url] = true
@@ -146,13 +159,13 @@ wget.callbacks.get_urls = function(file, url, is_css, iri)
   end
 
   if allowed(url, nil)
-      and not string.match(url, "^https?://[^/]+/forum/[0-9]+/[0-9]") then
+      and not string.match(url, "^https?://" .. urlmatchinner .. "/forum/[0-9]+/[0-9]") then
     html = read_file(file)
 
     if string.match(url, "/forum/[0-9]+/$") then
       local forumid = string.match(url, "/forum/([0-9]+)/$")
       local pages = extractpages(html)
-      discovered_forumpages[item_value .. ":" .. forumid .. ":" .. pages] = true
+      discovered_forumpages[item_value_original .. ":" .. forumid .. ":" .. pages] = true
     end
 
     if string.match(url, "/members/$") then
@@ -238,7 +251,7 @@ wget.callbacks.finish = function(start_time, end_time, wall_time, numurls, total
     for website, _ in pairs(discovered_forums) do
       file:write("baseforum:" .. website .. "\n")
     end
-  elseif item_type == "forumbase" then
+  elseif item_type == "baseforum" then
     for data, _ in pairs(discovered_forumpages) do
       file:write("forumpages:" .. data .. "\n")
     end

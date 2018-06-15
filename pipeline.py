@@ -210,11 +210,12 @@ class WgetArgs(object):
                                       .format(server, board)])
                     wget_args.append('http://{}.{}.zetaboards.com/'
                                      .format(board, server))
-        elif item_type == 'forumbase':
+        elif item_type == 'baseforum':
             wget_args.extend(['--warc-header',
                               'zetaboards-forum-base: {}'.format(item_value)])
-            wget_args.append('http://{}/index/'.format(item_value))
-            wget_args.append('http://{}/'.format(item_value))
+            s = item_value.rstrip('/')
+            wget_args.append('http://{}/index/'.format(s))
+            wget_args.append('http://{}/'.format(s))
         else:
             raise Exception('Unknown item')
 
