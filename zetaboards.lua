@@ -14,6 +14,7 @@ local abortgrab = false
 
 local discovered_forums = {}
 local discovered_forumpages = {}
+local discovered_memberpages = {}
 
 for ignore in io.open("ignore-list", "r"):lines() do
   downloaded[ignore] = true
@@ -36,7 +37,18 @@ allowed = function(url, parenturl)
      or string.match(url, "//$")
      or string.match(url, "locale%.lang")
      or string.match(url, "subscribe$")
-     or string.match(url, "/topic/[0-9]+") then
+     or string.match(url, "/topic/[0-9]+")
+     or string.match(url, "/profile/[0-9]+")
+     or string.match(url, "/stats/list/%?tid=[0-9]+")
+     or string.match(url, "/forum/[0-9]+/[0-9]+/$")
+     or string.match(url, "/blog/main/[0-9]+/$")
+     or string.match(url, "/blog/entry/[0-9]+/[0-9]+/$")
+     or string.match(url, "/members/[0-9]+/") then
+    return false
+  end
+
+  if string.match(url, "/calendar/bday/.+y=[0-9]+")
+     and tonumber(string.match(url, "y=([0-9]+)")) ~= 2018 then
     return false
   end
 
@@ -125,15 +137,26 @@ wget.callbacks.get_urls = function(file, url, is_css, iri)
     end
   end
 
+  local function extractpages(html)
+    local pages = 1
+    if string.match(html, "spawnJump") then
+      pages = string.match(html, "spawnJump%(this,([0-9]+),[0-9]+,board_url%);")
+    end
+    return pages
+  end
+
   if allowed(url, nil)
       and not string.match(url, "^https?://[^/]+/forum/[0-9]+/[0-9]") then
     html = read_file(file)
 
-    if string.match(url, "/forum/[0-9]+/$")
-       and string.match(html, "spawnJump") then
+    if string.match(url, "/forum/[0-9]+/$") then
       local forumid = string.match(url, "/forum/([0-9]+)/$")
-      local pages = string.match(html, "spawnJump%(this,([0-9]+),[0-9]+,board_url%);")
-      discovered_forumpages[item_value .. ":" .. forumis .. ":" .. pages] = true
+      local pages = extractpages(html)
+      discovered_forumpages[item_value .. ":" .. forumid .. ":" .. pages] = true
+    end
+
+    if string.match(url, "/members/$") then
+      discovered_memberpages[extractpages(html)] = true
     end
 
     for newurl in string.gmatch(html, '([^"]+)') do
@@ -218,6 +241,9 @@ wget.callbacks.finish = function(start_time, end_time, wall_time, numurls, total
   elseif item_type == "forumbase" then
     for data, _ in pairs(discovered_forumpages) do
       file:write("forumpages:" .. data .. "\n")
+    end
+    for data, _ in pairs(discovered_memberpages) do
+      file:write("memberpages:" .. data .. "\n")
     end
   end
   file:close()
