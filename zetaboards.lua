@@ -47,8 +47,8 @@ allowed = function(url, parenturl)
     return false
   end
 
-  if string.match(url, "/calendar/bday/.+y=[0-9]+")
-     and tonumber(string.match(url, "y=([0-9]+)")) ~= 2018 then
+  if string.match(url, "/calendar/bday/.+[^a-zA-Z]y=[0-9]+")
+     and string.match(url, "[^a-zA-Z]y=([0-9]+)") ~= "2018" then
     return false
   end
 
