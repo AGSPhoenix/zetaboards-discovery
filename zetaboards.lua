@@ -65,6 +65,22 @@ allowed = function(url, parenturl)
     return false
   end
 
+  local tested = {}
+  for s in string.gmatch(testurl, "([^/]+)") do
+    local count = 0
+    if tested[s] ~= true then
+      for m in string.gmatch(testurl, "([^/]+)") do
+        if m == s then
+          count = count + 1
+          if count == 3 then
+            return false
+          end
+        end
+      end
+      tested[s] = true
+    end
+  end
+
   if string.match(testurl, urlmatch) == item_value then
     return true
   end
